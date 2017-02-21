@@ -70,6 +70,7 @@ so we create an artificial data with this simple call.
 
 ```{r loadPackages, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE}
 suppressPackageStartupMessages(library(ramwas))
+# dr = 'D:/temp'
 ```
 
 ```{r generateData, warning=FALSE}
@@ -96,7 +97,7 @@ See [CpG set vignette](RW4_CpG_sets.html) for more information.
 Each RaMWAS step accepts parameters in the form of a list with named elements.
 Here is the parameter list we will use for all steps below.
 ```{r parameters, eval=TRUE}
-param = list(
+param = ramwasParameters(
     dirproject = dr,
     dirbam = "bams",
     filebamlist = "bam_list.txt",
@@ -119,7 +120,7 @@ param = list(
     biattributes = c("hgnc_symbol","entrezgene","strand"),
     bifilters = list(with_hgnc_transcript_name=TRUE),
     biflank = 0,
-    cvnfolds = 10,
+    cvnfolds = 3,
     mmalpha = 0,
     mmncpgs = c(5,10,50,100,500,1000,5000,10000)
 )
