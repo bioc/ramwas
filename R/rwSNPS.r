@@ -24,7 +24,7 @@ ramwas5saveTopFindingsSNPs = function(param){
 
     toptable = data.frame( chr = chrnames[cpgloc[ord,1]],
                                   position =     cpgloc[ord,2],
-                                  tstat  = mwas[ord,2],
+                                  Ftest  = mwas[ord,2],
                                   pvalue = mwas[ord,3],
                                   qvalue = mwas[ord,4]);
 
@@ -157,7 +157,7 @@ ramwas5saveTopFindingsSNPs = function(param){
     mm = rng[2]-rng[1]+1;
     nsteps = ceiling(mm/step1);
     for( part in 1:nsteps ){ # part = 1
-        cat( part, "of", nsteps, "\n");
+        message("Slice ", part, " of ", nsteps);
         fr = (part-1)*step1 + rng[1];
         to = min(part*step1, mm) + rng[1] - 1;
 
@@ -235,11 +235,11 @@ ramwasSNPs = function( param ){
         # rez = ramwas:::.matchCovmatCovar( param );
         rowsubset = rez$rowsubset;
         ncpgs     = rez$ncpgs;
-        cvsamples = param$covariates[[1]];
+        cvsamples = rez$cvsamples;
         rm(rez);
-    } # rowsubset, ncpgs, cvsamples
+    } # rowsubset, ncpgs
 
-    ### Prepare covariates, defactor,
+    ### Prepare covariates, defactor
     {
         message("Preparing covariates (splitting dummies, orthonormalizing)");
         mwascvrtqr = .getCovariates(param = param, 
@@ -271,18 +271,27 @@ ramwasSNPs = function( param ){
         cat(file = paste0(param$dirSNPs,"/Log.txt"),
              date(), ", Running methylome-wide association study with SNPs.", "\n",
              sep = "", append = FALSE);
-        if( param$diskthreads > 1 ){
-            rng = round(seq(1, ncpgs+1, length.out = param$diskthreads+1));
+        
+        step1 = ceiling( 512*1024*1024 / length(cvsamples) / 8);
+        mm = ncpgs;
+        nsteps = ceiling(mm/step1);
+        
+        nthreads = min(param$diskthreads, nsteps);
+        rm(step1, mm, nsteps);
+        if( nthreads > 1 ){
+            rng = round(seq(1, ncpgs+1, length.out = nthreads+1));
             rangeset = rbind( rng[-length(rng)],
                               rng[-1]-1,
-                              seq_len(param$diskthreads));
+                              seq_len(nthreads));
             rangeset = lapply(seq_len(ncol(rangeset)),
                               function(i) rangeset[,i])
 
             if(param$usefilelock) param$lockfile2 = tempfile();
             # library(parallel);
-            cl = makeCluster(param$diskthreads);
-            # testPhenotypeSNPs = testPhenotypeSNPs;
+            cl = makeCluster(nthreads);
+            on.exit({
+                stopCluster(cl);
+                .file.remove(param$lockfile2);});
             # clusterExport(cl, "testPhenotypeSNPs", envir = )
             clusterApplyLB(cl,
                            rangeset,
@@ -290,9 +299,9 @@ ramwasSNPs = function( param ){
                            param = param,
                            mwascvrtqr = mwascvrtqr,
                            rowsubset = rowsubset);
-            stopCluster(cl);
+            eval(sys.on.exit());
+            on.exit();
             rm(cl, rng, rangeset);
-            .file.remove(param$lockfile2);
         } else {
             covmat = .ramwasSNPsJob(rng = c(1, ncpgs, 0),
                                      param,

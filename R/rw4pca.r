@@ -40,7 +40,7 @@
     mm = rng[2]-rng[1]+1;
     nsteps = ceiling(mm/step1);
     for( part in 1:nsteps ){ # part = 1
-        cat( part, "of", nsteps, "\n");
+        message("Slice ", part, " of ", nsteps);
         fr = (part-1)*step1 + rng[1];
         to = min(part*step1, mm) + rng[1] - 1;
 
@@ -67,6 +67,32 @@
     return(covmat);
 }
 
+plotPCvalues = function(values, n = 40){
+    pc100 = head(values,n)/sum(values)*100;
+    plot(pc100, 
+         pch = 19, 
+         col="blue", 
+         ylim = c(0, pc100[1]*1.05),
+         xlim = c(0, length(pc100)+0.5),
+         main = "Principal components",
+         xlab = "PCs", 
+         ylab = "Variation Explained (%)",
+         yaxs = "i", 
+         xaxs = "i")
+}
+
+plotPCvectors = function(e, i){
+     plot(e$vectors[,i],
+                 main = paste("PC",i),
+                 xlab = "Samples",
+                 ylab = "PC components",
+                 pch = 19,
+                 col = "blue1",
+                 xlim = c(0, length(e$values)+0.5),
+                 xaxs = "i");
+    abline(h = 0, col = "grey");
+}
+
 postPCAprocessing = function(param, e = NULL, plotPCs = 20){
     param = parameterPreprocess(param);
     
@@ -77,13 +103,11 @@ postPCAprocessing = function(param, e = NULL, plotPCs = 20){
         # rez = ramwas:::.matchCovmatCovar( param );
         rowsubset = rez$rowsubset;
         ncpgs     = rez$ncpgs;
-        cvsamples = param$covariates[[1]];
-        if( is.null(cvsamples))
-            cvsamples = rez$samplenames;
+        cvsamples = rez$cvsamples;
         rm(rez);
     } # rowsubset, ncpgs, cvsamples
     
-    ### Prepare covariates, defactor,
+    ### Prepare covariates, defactor
     {
         message("Preparing covariates (splitting dummies, orthonormalizing)");
         cvrtqr = .getCovariates(param = param, 
@@ -101,22 +125,9 @@ postPCAprocessing = function(param, e = NULL, plotPCs = 20){
     {
         message("Saving PCA plots");
         pdf(paste0(param$dirpca, "/PC_plot_covariates_removed.pdf"),7,7);
-        pc100 = head(e$values,40)/sum(e$values)*100;
-        plot(pc100, pch = 19, col="blue", main = "Principal components",
-             xlab = "PCs", ylab = "Variation Explained (%)",
-             yaxs = "i", ylim = c(0,pc100[1]*1.05),
-             xaxs = "i", xlim = c(0, length(pc100)+0.5));
-        for( i in seq_len(min(plotPCs,nonzeroPCs)) ){ # i=1
-            plot(e$vectors[,i],
-                 main=paste("PC",i),
-                 xlab = "Samples",
-                 ylab = "PC components",
-                 pch=19,
-                 col="blue1",
-                 xlim = c(0, length(e$values)+0.5),
-                 xaxs="i");
-            abline(h = 0, col = "grey");
-        }
+        plotPCvalues(e$values,40);
+        for( i in seq_len(min(plotPCs,nonzeroPCs)))
+            plotPCvectors(e,i);
         dev.off();
     }
     
@@ -132,7 +143,7 @@ postPCAprocessing = function(param, e = NULL, plotPCs = 20){
                     row.names = FALSE);
         PC_values = data.frame(
             PC_num = paste0("PC",seq_len(length(e$values))),
-            e$values/sum(e$values));
+            VarianceExplained = e$values/sum(e$values));
         write.table(file = paste0(param$dirpca, "/PC_values.txt"),
                     x = PC_values,
                     sep = "\t",
@@ -181,21 +192,19 @@ ramwas4PCA = function( param ){
         # rez = ramwas:::.matchCovmatCovar( param );
         rowsubset = rez$rowsubset;
         ncpgs     = rez$ncpgs;
-        cvsamples = param$covariates[[1]];
-        if( is.null(cvsamples))
-            cvsamples = rez$samplenames;
+        cvsamples = rez$cvsamples;
         rm(rez);
     } # rowsubset, ncpgs, cvsamples
 
-    ### Prepare covariates, defactor,
+    ### Prepare covariates, defactor
     {
         message("Preparing covariates (splitting dummies, orthonormalizing)");
-        cvrt = param$covariates[ param$modelcovariates ];
-        if(is.null(cvrt))
-            cvrt = matrix(nrow = length(cvsamples), ncol = 0);
-        cvrtqr = t(orthonormalizeCovariates(cvrt));
-        rm(cvrt);
-    } # cvrtqr
+        param$modelPCs = 0;
+        mwascvrtqr = .getCovariates(param = param, 
+                                    rowsubset = rowsubset, 
+                                    modelhasconstant = param$modelhasconstant);
+        # mwascvrtqr = ramwas:::.getCovariates(param, rowsubset, TRUE, param$modelhasconstant);
+    } # mwascvrtqr
 
     ### PCA part
     {
@@ -205,34 +214,41 @@ ramwas4PCA = function( param ){
             cat(file = paste0(param$dirpca,"/Log.txt"),
                  date(), ", Running Principal Component Analysis.", "\n",
                  sep = "", append = FALSE);
-
-            if( param$diskthreads > 1 ){
-                rng = round(seq(1, ncpgs+1, length.out = param$diskthreads+1));
+            
+            step1 = ceiling( 128*1024*1024 / length(cvsamples) / 8);
+            mm = ncpgs;
+            nsteps = ceiling(mm/step1);
+            
+            nthreads = min(param$diskthreads, nsteps);
+            rm(step1, mm, nsteps);
+            if( nthreads > 1 ){
+                rng = round(seq(1, ncpgs+1, length.out = nthreads+1));
                 rangeset = rbind( rng[-length(rng)],
                                   rng[-1]-1,
-                                  seq_len(param$diskthreads));
+                                  seq_len(nthreads));
                 rangeset = lapply(seq_len(ncol(rangeset)),
                                   function(i) rangeset[,i])
 
                 if(param$usefilelock) param$lockfile2 = tempfile();
                 # library(parallel);
-                cl = makeCluster(param$diskthreads);
-                # cl = makePSOCKcluster(rep("localhost", param$diskthreads))
+                cl = makeCluster(nthreads);
+                on.exit({stopCluster(cl);});
                 covlist = clusterApplyLB(cl,
                                          rangeset,
                                          .ramwas4PCAjob,
                                          param = param,
-                                         cvrtqr = cvrtqr,
+                                         cvrtqr = mwascvrtqr,
                                          rowsubset = rowsubset);
                 covmat = Reduce(f = `+`, x = covlist);
-                stopCluster(cl);
+                eval(sys.on.exit());
+                on.exit();
                 rm(cl, rng, rangeset, covlist);
                 .file.remove(param$lockfile2);
             } else {
-                covmat = .ramwas4PCAjob( rng = c(1, ncpgs, 0),
-                                         param,
-                                         cvrtqr,
-                                         rowsubset);
+                covmat = .ramwas4PCAjob( rng = c(1, ncpgs, 0), 
+                                         param = param,
+                                         cvrtqr = mwascvrtqr,
+                                         rowsubset = rowsubset);
             }
             cat(file = paste0(param$dirpca,"/Log.txt"),
                  date(), ", Done running Principal Component Analysis.", "\n",
@@ -241,7 +257,6 @@ ramwas4PCA = function( param ){
             saveRDS(file = paste0(param$dirpca,"/covmat.rds"),
                     object = covmat,
                     compress = FALSE);
-            # covmat = readRDS(paste0(param$dirpca,"/covmat.rds"));
         } # covmat
 
         ### Eigenvalue decomposition
@@ -252,7 +267,7 @@ ramwas4PCA = function( param ){
                     object = e,
                     compress = FALSE);
             # e = readRDS(paste0(param$dirpca,"/eigen.rds"));
-        } # e, nonzeroPCs
+        } # e
     }
     
     postPCAprocessing(param, e);
@@ -285,7 +300,7 @@ ramwasPCsCovariateSelection = function(param){
 
         cvtrqr = orthonormalizeCovariates(cvrt = ann[covset]);
         covmat1 = covmat;
-        covmat1 = covmat1 - tcrossprod(covmat1 %*% cvtrqr, cvtrqr)
+        covmat1 = covmat1 - tcrossprod(covmat1 %*% cvtrqr, cvtrqr);
         covmat1 = covmat1 - cvtrqr %*% crossprod(cvtrqr, covmat1);
 
         ### Eigenvalue decomposition

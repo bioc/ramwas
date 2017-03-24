@@ -410,6 +410,12 @@ ramwas2collectqc = function( param ){
                text = as.character(estimate));
 
     pdf(paste0(param$dirqc,"/Fragment_size_distribution_estimate.pdf"),8,8);
+    plotFragmentSizeDistributionEstimate(frdata, estimate);
+    dev.off();
+    return(invisible(NULL));
+}
+
+plotFragmentSizeDistributionEstimate = function(frdata, estimate){
     lz = lm(frdata[seq_along(estimate)] ~ estimate)
     plot(as.vector(frdata)/1000,
          pch = 19,
@@ -421,6 +427,4 @@ ramwas2collectqc = function( param ){
     lines((estimate*lz$coefficients[2]+lz$coefficients[1])/1000,
           lwd = 4,
           col="red");
-    dev.off();
-    return(invisible(NULL));
 }
