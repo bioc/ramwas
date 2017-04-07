@@ -326,10 +326,9 @@ ramwas5MWAS = function( param ){
     ### Prepare covariates, defactor
     {
         message("Preparing covariates (splitting dummies, orthonormalizing)");
-        mwascvrtqr = .getCovariates(param = param, 
-                                    rowsubset = rowsubset, 
+        mwascvrtqr = .getCovariates(param = param,
+                                    rowsubset = rowsubset,
                                     modelhasconstant = param$modelhasconstant);
-        # mwascvrtqr = ramwas:::.getCovariates(param, rowsubset, TRUE, param$modelhasconstant);
     } # mwascvrtqr
 
 
@@ -354,11 +353,11 @@ ramwas5MWAS = function( param ){
         cat(file = paste0(param$dirmwas,"/Log.txt"),
              date(), ", Running methylome-wide association study.", "\n",
              sep = "", append = FALSE);
-        
+
         step1 = ceiling( 512*1024*1024 / length(cvsamples) / 8);
         mm = ncpgs;
         nsteps = ceiling(mm/step1);
-        
+
         nthreads = min(param$diskthreads, nsteps);
         rm(step1, mm, nsteps);
         if( nthreads > 1 ){
@@ -382,10 +381,12 @@ ramwas5MWAS = function( param ){
                            param = param,
                            mwascvrtqr = mwascvrtqr,
                            rowsubset = rowsubset);
-            eval(sys.on.exit());
+            tmp = sys.on.exit();
+            eval(tmp);
+            rm(tmp);
             on.exit();
             rm(cl, rng, rangeset);
-            
+
         } else {
             covmat = .ramwas5MWASjob(rng = c(1, ncpgs, 0),
                                      param,

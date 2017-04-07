@@ -46,7 +46,7 @@ calc.coverage = function(rbam, cpgset, fragdistr){
 }
 
 .readRDS = function(object){
-    # readBin(object, what = 'raw', n = file.size(object));
+    # readBin(object, what = "raw", n = file.size(object));
     return(readRDS(object));
 }
 
@@ -282,8 +282,8 @@ ramwas3normalizedCoverage = function( param ){
         message("Checking if all required Rbam files present");
         bams = unlist(param$bam2sample);
         for( bname in bams){
-            filename = paste0( param$dirrbam, "/", bname);
-            if( file.exists(filename) ){
+            filename = paste0( param$dirrbam, "/", bname, ".rbam.rds");
+            if( !file.exists(filename) ){
                 stop(paste0("Rbam file from bam2sample not found: ", filename));
             }
         }
@@ -331,7 +331,9 @@ ramwas3normalizedCoverage = function( param ){
                                .ramwas3coverageJob,
                                param = param,
                                nslices = nslices);
-            eval(sys.on.exit());
+            tmp = sys.on.exit();
+            eval(tmp);
+            rm(tmp);
             on.exit();
         } else {
             z = character(nsamples);
@@ -373,7 +375,9 @@ ramwas3normalizedCoverage = function( param ){
                                1:nslices,
                                .ramwas3transposeFilterJob,
                                param = param);
-            eval(sys.on.exit());
+            tmp = sys.on.exit();
+            eval(tmp);
+            rm(tmp);
             on.exit();
         } else {
             for( fmpart in seq_len(nslices) ){ # fmpart = 5
@@ -474,7 +478,9 @@ ramwas3normalizedCoverage = function( param ){
                                .ramwas3normalizeJob,
                                param = param,
                                samplesums = samplesums);
-            eval(sys.on.exit());
+            tmp = sys.on.exit();
+            eval(tmp);
+            rm(tmp);
             on.exit();
         } else {
             for( fmpart in seq_len(nslices) ){ # fmpart = 5
