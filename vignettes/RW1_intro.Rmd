@@ -1,18 +1,21 @@
 ---
-title: "1. RaMWAS Overview"
+title: "RaMWAS Overview"
 date: "`r Sys.Date()`"
 output:
-  BiocStyle::html_document:
-    toc: true # table of content true
+    BiocStyle::html_document:
+        toc: true # table of content true
 vignette: >
-  %\VignetteIndexEntry{1. Overview}
-  %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteIndexEntry{1. Overview}
+    %\VignetteEngine{knitr::rmarkdown}
 bibliography: bib.bib
+editor_options:
+    chunk_output_type: console
 ---
 
 ```{r loadKnitr, echo=FALSE}
 library("knitr")
-# opts_chunk$set(eval=FALSE)
+# opts_chunk$set(eval = FALSE)
+opts_chunk$set(fig.width = 6, fig.height = 6)
 library(pander)
 panderOptions("digits", 3)
 ```
@@ -29,15 +32,15 @@ gene expression and genotype data
 
 RaMWAS includes the following major components (steps):
 
-1. Scanning aligned reads from BAM files.
-2. Calculation of quality control (QC) measures, aggregate QC plots,
-   fragment size distribution estimation.
-3. Creation of CpG score (coverage) matrix, sample normalization.
-4. Principal component analysis.
-5. Methylome-wide association study (MWAS).
-6. Annotation of top findings using the BioMart database.
-7. Multi-marker analysis (methylation risk score) using elastic net.
-8. MWAS with correction for effect of SNPs.
+1.  Scanning aligned reads from BAM files.
+2.  Calculation of quality control (QC) measures, aggregate QC plots,
+    fragment size distribution estimation.
+3.  Creation of CpG score (coverage) matrix, sample normalization.
+4.  Principal component analysis.
+5.  Methylome-wide association study (MWAS).
+6.  Annotation of top findings using the BioMart database.
+7.  Multi-marker analysis (methylation risk score) using elastic net.
+8.  MWAS with correction for effect of SNPs.
 
 Most steps of RaMWAS are internally parallelized.
 This is made possible, in part, by the use of the
@@ -85,10 +88,12 @@ suppressPackageStartupMessages(library(ramwas))
 ```{r generateData, warning=FALSE}
 library(ramwas)
 dr = paste0(tempdir(), "/simulated_project")
-ramwas0createArtificialData(dir = dr,
-                            verbose = FALSE,
-                            nreads = 100e3,
-                            ncpgs = 25e3)
+ramwas0createArtificialData(
+            dir = dr,
+            nsamples = 20,
+            nreads = 100e3,
+            ncpgs = 25e3,
+            threads = 2)
 cat("Project directory:", dr)
 ```
 **Note.** The project directory `dr` can be set to
@@ -97,12 +102,12 @@ a more convenient location when running the code.
 The function `ramwas0createArtificialData` created the following files
 and subdirectories in the project directory.
 
-* `bams` -- directory with 20 BAM files
-* `bam_list.txt` -- file with names of all the BAM files
-* `covariates.txt` -- file with 
-  age and sex variables for the samples.\
-  The methylation level of some CpGs depends on these covariates.
-* `Simulated_chromosome.rds` - file with genomic locations for all CpGs.\
+*   `bams` -- directory with 20 BAM files
+*   `bam_list.txt` -- file with names of all the BAM files
+*   `covariates.txt` -- file with 
+    age and sex variables for the samples.\
+    The methylation level of some CpGs depends on these covariates.
+*   `Simulated_chromosome.rds` - file with genomic locations for all CpGs.\
 See [CpG set vignette](RW2_CpG_sets.html) for more information.
 
 Each RaMWAS step accepts parameters in the form of a list.
@@ -129,11 +134,11 @@ param = ramwasParameters(
     bimart = "ENSEMBL_MART_ENSEMBL",
     bidataset = "hsapiens_gene_ensembl",
     biattributes = c("hgnc_symbol","entrezgene","strand"),
-    bifilters = list(with_hgnc_trans_name=TRUE),
+    bifilters = list(with_hgnc_trans_name = TRUE),
     biflank = 0,
     cvnfolds = 5,
     mmalpha = 0,
-    mmncpgs = c(5,10,50,100,500,1000,2000,3000)
+    mmncpgs = c(5, 10, 50, 100, 500, 1000, 2000)
 )
 ```
 We describe the role of each parameter as they are used below.
@@ -173,34 +178,35 @@ ramwas1scanBams(param)
 
 This creates the following subdirectories in the project directory:
 
-* `qc` -- directory with a number of quality control (QC) plots, 
-  one plot per QC metrix per BAM.\
-  For more information see [BAM QC vignette](RW3_BAM_QCs.html).
-    * `edit_distance` -- plots showing distribution of edit distance, i.e.
-    number of mismatches between the aligned read and the reference genome.
-    * `isolated_distance` -- plots showing distribution of distances
-    from read starts to isolated CpGs. \
-    The CpGs are called isolated if they are located at least `maxfragmentsize`
-    basepairs away from any other CpG.\
-    The distribution of reads around these CpGs is used later
-    for estimation of fragment size distribution.
-    * `matched_length` -- plots showing distribution of the length of the
-    reads aligned to the reference genome.
-    * `score` -- plots showing distribution of the score (`scoretag` parameter).
-    * `coverage_by_density` -- plots showing average CpG score (coverage) as
-    a function of CpG density.\
-    These plots illustrate the performance of the enrichment protocol.
-    It is a sign of a stable protocol if the shape of these
-    plots is the same across BAMs.
-* `rds_rbam` and `rds_qc` -- directories with RaMWAS BAM info files
-(BAM read start locations) and BAM quality control metrics,
-one RDS file per BAM.
+*   `qc` -- directory with a number of quality control (QC) plots, 
+    one plot per QC metrix per BAM.\
+    For more information see [BAM QC vignette](RW3_BAM_QCs.html).
+    *   `edit_distance` -- plots showing distribution of edit distance, i.e.
+        number of mismatches between the aligned read and the reference genome.
+    *   `isolated_distance` -- plots showing distribution of distances
+        from read starts to isolated CpGs. \
+        The CpGs are called isolated if they are located at least 
+        `maxfragmentsize` basepairs away from any other CpG.\
+        The distribution of reads around these CpGs is used later
+        for estimation of fragment size distribution.
+    *   `matched_length` -- plots showing distribution of the length of the
+        reads aligned to the reference genome.
+    *   `score` -- plots showing distribution of the score 
+        (`scoretag` parameter).
+    *   `coverage_by_density` -- plots showing average CpG score (coverage) as
+        a function of CpG density.\
+        These plots illustrate the performance of the enrichment protocol.
+        It is a sign of a stable protocol if the shape of these
+        plots is the same across BAMs.
+*   `rds_rbam` and `rds_qc` -- directories with RaMWAS BAM info files
+    (BAM read start locations) and BAM quality control metrics,
+    one RDS file per BAM.
 
 Here is a `coverage_by_density` plot for the simulated data.
 It shows higher average CpG score (fragment coverage) for regions
 with higher CpG densities, up to the saturation point.
 
-```{r plotACbD, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
+```{r plotACbD, warning=FALSE, message=FALSE}
 pfull = parameterPreprocess(param)
 qc = readRDS(paste0(pfull$dirrqc, "/BAM007.qc.rds"))
 plot(qc$qc$avg.coverage.by.density)
@@ -233,36 +239,36 @@ ramwas2collectqc(param)
 
 The following files and directories are created in the project directory:
 
-* `Fragment_size_distribution.txt` -- text file with estimated
+*   `Fragment_size_distribution.txt` -- text file with estimated
 fragment size distribution.
-* `qc/Fragment_size_distribution_estimate.pdf` -- plot showing both
+*   `qc/Fragment_size_distribution_estimate.pdf` -- plot showing both
 estimated fragment size distribution and the distribution of distances
 from read starts to isolated CpGs.
-* Four sub-directories in the "qc" directory
-    + `summary_bams` -- by BAMs.\
-    This information can be used 
-    to exclude BAMs that fail selected QC criteria.
-    + `summary_bams_in_bam2sample` -- by BAMs,
-    but only those listed in `filebam2sample` parameter.\
-    This information can be used to confirm that all BAMs that did not pass
-    QC are no longer used in further analyses.
-    + `summary_by_sample` -- by sample.\
-    Slightly different QC criteria can be applied on sample level.
-    For example, samples with low number of total reads 
-    can be excluded.
-    + `summary_total` -- total across all BAMs.\
-    This information presents the project summary 
-    of all BAMs in `filebam2sample`.
+*   Four sub-directories in the "qc" directory
+    +   `summary_bams` -- by BAMs.\
+        This information can be used 
+        to exclude BAMs that fail selected QC criteria.
+    +   `summary_bams_in_bam2sample` -- by BAMs,
+        but only those listed in `filebam2sample` parameter.\
+        This information can be used to confirm that all BAMs that did not pass
+        QC are no longer used in further analyses.
+    +   `summary_by_sample` -- by sample.\
+        Slightly different QC criteria can be applied on sample level.
+        For example, samples with low number of total reads 
+        can be excluded.
+    +   `summary_total` -- total across all BAMs.\
+        This information presents the project summary 
+        of all BAMs in `filebam2sample`.
 * The directories listed above contain
-    - `Summary_QC.txt` -- table with a number of numerical QC measures,
-    in an Excel friendly format.
-    - `Summary_QC_R.txt` -- table with a number of numerical QC measures,
-    in an R friendly format.
-    - `qclist.rds` -- an R file with list of QC objects.
-    - `Fig_hist_*.pdf` -- histograms of several QC measures across samples.
-    - `Fig_*.pdf` -- PDF files with various QC plots,
-    one page per BAM or sample,
-    depending on the directory.
+    -   `Summary_QC.txt` -- table with a number of numerical QC measures,
+        in an Excel friendly format.
+    -   `Summary_QC_R.txt` -- table with a number of numerical QC measures,
+        in an R friendly format.
+    -   `qclist.rds` -- an R file with list of QC objects.
+    -   `Fig_hist_*.pdf` -- histograms of several QC measures across samples.
+    -   `Fig_*.pdf` -- PDF files with various QC plots,
+        one page per BAM or sample,
+        depending on the directory.
 
 After exclusion of BAMs and samples not passing QC,
 step 2 should be rerun. This ensures that
@@ -275,12 +281,12 @@ The red line is the parametic fit for these points.
 For more information on estimation of fragment size distribution see
 [@van2013estimation].
 
-```{r plotFSD, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
+```{r plotFSD, warning=FALSE, message=FALSE}
 qc = readRDS(paste0(pfull$dirqc, "/summary_total/qclist.rds"))
 frdata = qc$total$hist.isolated.dist1
 estimate = as.double(readLines(
-    paste0(pfull$dirproject,"/Fragment_size_distribution.txt")))
-ramwas:::plotFragmentSizeDistributionEstimate(frdata, estimate)
+    con = paste0(pfull$dirproject,"/Fragment_size_distribution.txt")))
+plotFragmentSizeDistributionEstimate(frdata, estimate)
 ```
 
 
@@ -296,12 +302,12 @@ RaMWAS can filter out CpGs with low scores.
 These CpGs are unmethylated and are unlikely to produce any findings.
 A CpG is preserved if
 
-* CpG has average equal or greater than the 
-threshold `minavgcpgcoverage` (default is 0.3).
-* CpG has at least `minnonzerosamples` proportion of samples
-with nonzero coverage\
-  (default is 0.3, i.e. a CpG is preserved if at least 30\% of samples
-  have non-zero coverage).
+*   CpG has average equal or greater than the 
+    threshold `minavgcpgcoverage` (default is 0.3).
+*   CpG has at least `minnonzerosamples` proportion of samples
+    with nonzero coverage\
+    (default is 0.3, i.e. a CpG is preserved if at least 30\% of samples
+    have non-zero coverage).
 
 For each sample, the CpG scores are affected by
 the number of sequenced DNA fragments,
@@ -319,19 +325,19 @@ This step a new creates directory named
 (X is the number of samples, see [Directory names][]) 
 with the following files:
 
-* `Coverage.*` -- filematrix with the CpG scores for all samples and all
-CpGs that passed the filtering.\
-  Each row has coverage for a single sample.\
-  Each column has coverage for a single CpG. \
-  See [filematrix](https://CRAN.R-project.org/package=filematrix)
-  package for format details.
-* `CpG_locations.*` -- filematrix with the location of the CpGs
-  that passed the threshold.\
-  It has two columns -- `chr` and `position`.
-* `CpG_chromosome_names.txt` -- file with chromosome names (factor levels)
-  for the integer column `chr` in `CpG_locations.*` filematrix.
-* `raw_sample_sums.*` -- filematrix with total coverage for each
-  sample before normalization.
+*   `Coverage.*` -- filematrix with the CpG scores for all samples and all
+    CpGs that passed the filtering.\
+    Each row has coverage for a single sample.\
+    Each column has coverage for a single CpG. \
+    See [filematrix](https://CRAN.R-project.org/package=filematrix)
+    package for format details.
+*   `CpG_locations.*` -- filematrix with the location of the CpGs
+    that passed the threshold.\
+    It has two columns -- `chr` and `position`.
+*   `CpG_chromosome_names.txt` -- file with chromosome names (factor levels)
+    for the integer column `chr` in `CpG_locations.*` filematrix.
+*   `raw_sample_sums.*` -- filematrix with total coverage for each
+    sample before normalization.
 
 **Note.** This step created temporary files in the `dirtemp` directory.
 
@@ -370,35 +376,35 @@ Y is a code distinguishing different sets with the same number of covariates
 (see [Directory names][]).
 The sub-directory includes:
 
-* `covmat.rds` and `eigen.rds` - RDS files with the covariance matrix and
-its eigenvalue decomposition.
-* `PC_values.txt` -- principal components scores.
-* `PC_loadings.txt` -- sample loadings for the top 20 PCs.
-* `PC_plot_covariates_removed.pdf` -- plots of principal components scores
-(i.e. \% variance explained on page 1) and
-sample loadings for the top 40 PCs (pages 2+).
-* `PC_vs_covariates_corr.txt` -- correlations of principal components
-with phenotypes/covariates (from `filecovariates` file).
-* `PC_vs_covariates_pvalue.txt` -- p-values for these correlations.
+*   `covmat.rds` and `eigen.rds` - RDS files with the covariance matrix and
+    its eigenvalue decomposition.
+*   `PC_values.txt` -- principal components scores.
+*   `PC_loadings.txt` -- sample loadings for the top 20 PCs.
+*   `PC_plot_covariates_removed.pdf` -- plots of principal components scores
+    (i.e. \% variance explained on page 1) and
+    sample loadings for the top 40 PCs (pages 2+).
+*   `PC_vs_covariates_corr.txt` -- correlations of principal components
+    with phenotypes/covariates (from `filecovariates` file).
+*   `PC_vs_covariates_pvalue.txt` -- p-values for these correlations.
 
 The PC plot for artificial data shows one strong component and
 no outliers in the sample loadings, with first PC clearly capturing sample sex.
 
-```{r plotPCA, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
+```{r plotPCA, warning=FALSE, message=FALSE}
 e = readRDS(paste0(pfull$dirpca, "/eigen.rds"))
-ramwas:::plotPCvalues(e$values)
-ramwas:::plotPCvectors(e,1)
-ramwas:::plotPCvectors(e,2)
-rm(e)
+plotPCvalues(e$values)
+plotPCvectors(e, 1)
+plotPCvectors(e, 2)
 ```
 
 The file with correlations shows
 strong correlation of the top PCs with age and sex.
 
-```{r tablePCAcr, echo=FALSE, warning=FALSE, message=FALSE}
-tblcr = read.table(paste0(pfull$dirpca, "/PC_vs_covs_corr.txt"),
-                 header = TRUE,
-                 sep = "\t")
+```{r tablePCAcr, warning=FALSE, message=FALSE}
+tblcr = read.table(
+            file = paste0(pfull$dirpca, "/PC_vs_covs_corr.txt"),
+            header = TRUE,
+            sep = "\t")
 pander(head(tblcr, 3))
 ```
 
@@ -406,10 +412,11 @@ The file with p-values indicate statistical significance of these correlations.
 
 Table: Correlations\ in\ `PC_vs_covariates_corr.txt`\ file.
 
-```{r tablePCApv, echo=FALSE, warning=FALSE, message=FALSE}
-tblpv = read.table(paste0(pfull$dirpca, "/PC_vs_covs_pvalue.txt"),
-                 header = TRUE,
-                 sep = "\t")
+```{r tablePCApv, warning=FALSE, message=FALSE}
+tblpv = read.table(
+            file = paste0(pfull$dirpca, "/PC_vs_covs_pvalue.txt"),
+            header = TRUE,
+            sep = "\t")
 pander(head(tblpv, 3))
 ```
 
@@ -453,13 +460,22 @@ diagonal for many CpGs, suggesting many markers with small effects.
 This is consistent with how the data was generated --
 there is weak signal in 1\% of CpGs.
 
-```{r tableMWAS, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
-fm = fm.open( paste0(pfull$dirmwas, "/Stats_and_pvalues") )
-pv = fm[,3]
-close(fm)
-qqPlotFast(pv)
-title(pfull$qqplottitle)
+RaMWAS also creates a Manhattan plot with matching Y axis.
+
+```{r tableMWAS, warning=FALSE, message=FALSE, fig.width = 12}
+mwas = getMWASandLocations(param)
+layout(matrix(c(1,2), 1, 2, byrow = TRUE), widths=c(1,2.2))
+qqPlotFast(mwas$`p-value`)
+man = manPlotPrepare(
+        pvalues = mwas$`p-value`,
+        chr = mwas$chr,
+        pos = mwas$start,
+        chrmargins = 0)
+manPlotFast(man)
 ```
+
+
+
 
 ## Annotation of top results {#step6}
 
@@ -531,38 +547,38 @@ where X is the number of folds in k-fold cross validation
 (see [Directory names][]).
 It contains:
 
-* `fold_*` -- directories with MWAS on 90\% of the data,
-  each with different 10% of the samples excluded from the analysis.\
-  Samples with missing (`NA`) outcome variable are not included in these MWAS.
-* `MMCVN_prediction_folds=10_CpGs=*.txt` --
-  table with true outcome and cross-validation prediction.
-* `MMCVN_prediction_folds=10_CpGs=*.pdf` --
-  scatter-plot of true outcome vs. cross-validation prediction.
-* `Prediction_alpha=0.000000.pdf` -- scatter plot of
-  outcome-prediction correlations as a function of the
-  number of CpGs used for prediction.
+*   `fold_*` -- directories with MWAS on 90\% of the data,
+    each with different 10% of the samples excluded from the analysis.\
+    Samples with missing (`NA`) outcome variable are not included in these MWAS.
+*   `MMCVN_prediction_folds=10_CpGs=*.txt` --
+    table with true outcome and cross-validation prediction.
+*   `MMCVN_prediction_folds=10_CpGs=*.pdf` --
+    scatter-plot of true outcome vs. cross-validation prediction.
+*   `Prediction_alpha=0.000000.pdf` -- scatter plot of
+    outcome-prediction correlations as a function of the
+    number of CpGs used for prediction.
 
 For the simulated data
 we get moderately good prediction
 using just 50 top CpGs.
-```{r plotCV1, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
-cv = readRDS( paste0(pfull$dircv, "/rds/CpGs=000050_alpha=0.000000.rds") )
-ramwas:::plotPrediction(param = pfull,
-                        outcome = cv$outcome,
-                        forecast = cv$forecast,
-                        cpgs2use = 50,
-                        main = "Prediction success (EN on coverage)")
+```{r plotCV1, warning=FALSE, message=FALSE}
+cv = readRDS(paste0(pfull$dircv, "/rds/CpGs=000050_alpha=0.000000.rds"))
+plotPrediction(
+        param = pfull,
+        outcome = cv$outcome,
+        forecast = cv$forecast,
+        cpgs2use = 50,
+        main = "Prediction success (EN on coverage)")
 ```
 
 The correlation of prediction with
 actual age is maximal when we use 100
 top CpGs in elastic net.
-```{r plotCV2, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
-ramwas7CplotByNCpGs(param)
+```{r plotCV2, warning=FALSE, message=FALSE}
 cl = readRDS(sprintf("%s/rds/cor_data_alpha=%f.rds",
                     pfull$dircv,
                     pfull$mmalpha))
-ramwas:::plotCVcors(cl, pfull)
+plotCVcors(cl, pfull)
 ```
 
 ## CpG-SNP analysis
@@ -593,13 +609,6 @@ cat("MWAS directory:", "\n", pfull$dirmwas, "\n")
 cat("MRS directory:", "\n", pfull$dircv, "\n")
 cat("CpG-SNP directory:", "\n", pfull$dirSNPs, "\n")
 ```
-
-<!-- ## Cleanup -->
-
-<!-- Here we remove all files created by the code above. -->
-<!-- ```{r clean} -->
-<!-- unlink(paste0(dr,"/*"), recursive=TRUE) -->
-<!-- ``` -->
 
 # Version information
 

@@ -1,42 +1,48 @@
+.dump = function(fid, param){
+    for( nm in names(param) ){ # nm = "modelcovariates"
+        prefix = "";
+        value = param[[nm]];
+        # Consider special cases of
+        # 1. Data frame
+        # 2. List
+        # 3. Vectors (but not bamnames)
+        # Anything else
+        if( is.data.frame(value) ){
+            txt = paste0("<Data frame ", nrow(value), " x ", ncol(value), ">");
+            prefix = "# ";
+        } else if( is.list(value) ){
+            txt = paste0("<List of length ", length(value), ">");
+            prefix = "# ";
+        } else if( length(value) > 1 ){
+            if( nm == "bamnames" ){
+                txt = paste0("<Total ", length(value), " BAM names>");
+                prefix = "# ";
+            } else {
+                txt = paste0(
+                    "c(\n",
+                    paste0("  ", sapply(value,deparse), collapse = ",\n"),
+                    ")");
+            }
+        } else {
+            txt = deparse(value);
+        }
+        cat(file = fid, prefix, nm, " = ", txt, "\n", sep = "");
+    }
+}
+
 # Save parameters "param" to a file in the "dir" directory
 # Save "toplines" first, other parameters next
 # Lists and "bamnames" are skipped
 parameterDump = function(dir, param, toplines = NULL){
-    message("Working in: ",dir);
-    .dump = function(fid, param){
-        for( nm in names(param) ){ # nm = "modelcovariates"
-            pre = "";
-            value = param[[nm]];
-            if( is.data.frame(value) ){
-                txt = paste0("<Data frame ",nrow(value)," x ",ncol(value),">");
-                pre = "# ";
-            } else if( is.list(value) ){
-                txt = paste0("<List of length ", length(value), ">");
-                pre = "# ";
-            } else if( length(value) > 1 ){
-                if(nm == "bamnames"){
-                    txt = paste0("<Total ",length(value)," BAM names>");
-                    pre = "# ";
-                } else {
-                    txt = paste0(
-                        "c(\n",
-                        paste0("  ",sapply(value, deparse),collapse = ",\n"),
-                        ")");
-                }
-            } else {
-                txt = deparse(value);
-            }
-            cat(file = fid, pre, nm, " = ", txt, "\n", sep = "");
-            # dput(param[[nm]], file = fid)
-        }
-    }
+    message("Working in: ", dir);
 
     fid = file( paste0(dir, "/UsedSettings.txt"), "wt");
     on.exit(close(fid));
-    writeLines(con = fid,
-       text = c("## Parameters used to create the files in this directory",""));
+    writeLines(
+        con = fid,
+        text = c("## Parameters used to create the files in this directory",""))
     if( !is.null(toplines)){
-        set = names(param) %in% toplines;
+        set = (names(param) %in% toplines);
         .dump(fid, param[ set]);
         writeLines(con = fid, text = "");
         .dump(fid, param[!set]);
@@ -154,6 +160,12 @@ processCommandLine = function(.arg = NULL){
     return(mget(ls()));
 }
 
+trimBamFilename = function(bamnames){
+    BNnopath = basename(bamnames);
+    BNnodotbam = gsub("\\.bam$", "", BNnopath, ignore.case = TRUE);
+    return(BNnodotbam);
+}
+
 # Fill in gaps in the parameter list
 # Make paths absolute
 parameterPreprocess = function( param ){
@@ -223,6 +235,9 @@ parameterPreprocess = function( param ){
         param$bam2sample = basename(param$bamnames);
         names(param$bam2sample) = basename(param$bamnames);
     }
+    
+    if(!is.null(param$bam2sample))
+        param$bam2sample = lapply(param$bam2sample, trimBamFilename);
 
     ### CV and Multi-marker approach
     if( is.null(param$cvnfolds)) param$cvnfolds = 10;
@@ -238,15 +253,14 @@ parameterPreprocess = function( param ){
             sep = "\t";
         }
         filename = makefullpath(param$dirproject, param$filecovariates);
-        param$covariates = read.table(filename, header = TRUE, sep = sep,
-                              stringsAsFactors = FALSE, check.names = FALSE);
+        param$covariates = read.table(
+                                file = filename, 
+                                header = TRUE, 
+                                sep = sep,
+                                stringsAsFactors = FALSE, 
+                                check.names = FALSE);
         rm(filename, sep);
     }
-
-    # Set param$dirtemp
-    if( is.null(param$dirtemp))
-        param$dirtemp = "temp";
-    param$dirtemp = makefullpath(param$dircoveragenorm, param$dirtemp);
 
     # Set param$dircoveragenorm
     if( is.null(param$dircoveragenorm)){
@@ -266,6 +280,17 @@ parameterPreprocess = function( param ){
     param$dircoveragenorm =
         makefullpath(param$dirfilter, param$dircoveragenorm);
 
+    # Set param$dirtemp
+    if( is.null(param$dirtemp))
+        param$dirtemp = "temp";
+    param$dirtemp = makefullpath(param$dircoveragenorm, param$dirtemp);
+    
+    if(is.null(param$covariates))
+        if(!is.null(param$bam2sample))
+            param$covariates = data.frame(
+                sample = names(param$bam2sample), 
+                stringsAsFactors = FALSE);
+
     # More checks with covariates
     if( !is.null(param$covariates)){
         param$covariates[[1]] = as.character(param$covariates[[1]]);
@@ -274,8 +299,8 @@ parameterPreprocess = function( param ){
 
         if( !all(param$modelcovariates %in% names(param$covariates) ) )
             stop( paste("Covariates (modelcovariates) missing in covariates:",
-             param$modelcovariates[
-                 !(param$modelcovariates %in% names(param$covariates)) ]));
+                param$modelcovariates[
+                    !(param$modelcovariates %in% names(param$covariates)) ]));
 
         if( !is.null(param$modeloutcome) )
             if( !( param$modeloutcome %in% names(param$covariates)) )
@@ -294,8 +319,9 @@ parameterPreprocess = function( param ){
                 object = paste(sort(param$modelcovariates), collapse = "\t"),
                 algo = "crc32",
                 serialize = FALSE);
-            param$dirpca = sprintf("PCA_%02d_cvrts_%s",
-                                   length(param$modelcovariates), hash);
+            param$dirpca = sprintf(
+                                "PCA_%02d_cvrts_%s",
+                                length(param$modelcovariates), hash);
         } else {
             param$dirpca = "PCA_00_cvrts";
         }
@@ -304,16 +330,18 @@ parameterPreprocess = function( param ){
 
     # Set param$dirmwas
     if( is.null(param$dirmwas) )
-        param$dirmwas = paste0("Testing_",
-                               param$modeloutcome,"_",
-                               param$modelPCs,"_PCs");
+        param$dirmwas = paste0(
+                            "Testing_",
+                            param$modeloutcome,"_",
+                            param$modelPCs,"_PCs");
     param$dirmwas = makefullpath(param$dirpca, param$dirmwas);
 
     # Set QQ-plot title
     if( is.null(param$qqplottitle)){
-        qqplottitle = paste0("Testing ", param$modeloutcome, "\n",
-                             param$modelPCs, " PC",
-                             if(param$modelPCs!=1)"s"else"");
+        qqplottitle = paste0(
+                            "Testing ", param$modeloutcome, "\n",
+                            param$modelPCs, " PC",
+                            if(param$modelPCs!=1)"s"else"");
         if(length(param$modelcovariates) > 0)
             qqplottitle = paste0(
                 qqplottitle, " and ",
@@ -324,8 +352,9 @@ parameterPreprocess = function( param ){
         rm(qqplottitle);
     }
     if( is.null(param$dircv))
-        param$dircv = sprintf("%s/CV_%02d_folds",
-                              param$dirmwas, param$cvnfolds);
+        param$dircv = sprintf(
+                            "%s/CV_%02d_folds",
+                            param$dirmwas, param$cvnfolds);
 
     ### CpG set should exist
     if( !is.null(param$filecpgset)){
@@ -374,10 +403,11 @@ parameterPreprocess = function( param ){
 
     # SNPs analysis
     if(is.null(param$dirSNPs))
-        param$dirSNPs = paste0("Testing_wSNPs_",
-                               param$modeloutcome, "_",
-                               length(param$modelcovariates), "cvrts_",
-                               param$modelPCs, "PCs");
+        param$dirSNPs = paste0(
+                            "Testing_wSNPs_",
+                            param$modeloutcome, "_",
+                            length(param$modelcovariates), "cvrts_",
+                            param$modelPCs, "PCs");
     param$dirSNPs = makefullpath( param$dircoveragenorm, param$dirSNPs);
     if(!is.null(param$fileSNPs))
         param$fileSNPs = makefullpath( param$dircoveragenorm, param$fileSNPs);

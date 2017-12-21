@@ -1,12 +1,14 @@
 ---
-title: "4. Joint Analysis of Methylation and Genotype Data"
+title: "Joint Analysis of Methylation and Genotype Data"
 date: "`r Sys.Date()`"
 output:
-  BiocStyle::html_document:
-    toc: true # table of content true
+    BiocStyle::html_document:
+        toc: true # table of content true
 vignette: >
-  %\VignetteIndexEntry{4. Joint Analysis of Methylation and Genotype Data}
-  %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteIndexEntry{4. Joint Analysis of Methylation and Genotype Data}
+    %\VignetteEngine{knitr::rmarkdown}
+editor_options:
+    chunk_output_type: console
 ---
 
 
@@ -15,11 +17,12 @@ library(knitr)
 library(pander)
 suppressPackageStartupMessages(library(ramwas))
 panderOptions("digits", 3)
+opts_chunk$set(fig.width = 6, fig.height = 6)
 # opts_chunk$set(eval=FALSE)
 dr = "D:/temp/"
 ```
 
-# Joint analysis of methylation and genotype data
+# Statistical model for Joint Analysis of Methylation and Genotype Data
 
 Single nucleotide polymorphisms (SNPs) can create and destroy CpGs.
 As methylation occurs mostly at CpGs,
@@ -43,14 +46,14 @@ $$\mu_i = \beta_0 + outcome * \beta_1 + {outcome} * {SNP}_i * \beta_2 +
 
 where
 
-* $\mu_i$ -- methylation measurement for $i$-th CpG.
-* $outcome$ -- phenotype of interest.
-* $SNP_i$ -- the SNP values (0/1/2 or dosages for imputed genotype)
-at the $i$-th CpG.
-* $cvrt$ -- covariates and the principal components.
-* $\epsilon$ -- noise.
+*   $\mu_i$ -- methylation measurement for $i$-th CpG.
+*   $outcome$ -- phenotype of interest.
+*   $SNP_i$ -- the SNP values (0/1/2 or dosages for imputed genotype)
+    at the $i$-th CpG.
+*   $cvrt$ -- covariates and the principal components.
+*   $\epsilon$ -- noise.
 
-## Input data
+# Input data
 
 For CpG-SNPs analysis RaMWAS requires the usual input
 (see 
@@ -63,23 +66,23 @@ same set of samples and the same set of locations.
 Data preparation may include finding the closest SNP for every CpG and
 exclusion of CpGs without any SNPs in vicinity.
 
-### Create data matrices for CpG-SNP analysis
+## Create data matrices for CpG-SNP analysis
 
 To illustrate this type of analysis we
 produce the following artificial files.
 
-* `CpG_locations.*` -- filematrix with the location of the SNP-CpGs.\
-It has two columns with integer values --
-chromosome number and location
-(`chr` and `position`).
-* `CpG_chromosome_names.txt` -- file with chromosome names (factor levels)
-for the integer column `chr` in the location filematrix.
-* `Coverage.*` -- filematrix with the data for all samples and all locations.\
-  Each row has data for a single sample.
-  Row names are sample names.\
-  Each column has data for a single location.
-  Columns match rows of the location filematrix.
-* `SNPs.*` -- filematrix with genotype data, matching the coverage matrix.
+*   `CpG_locations.*` -- filematrix with the location of the SNP-CpGs.\
+    It has two columns with integer values --
+    chromosome number and location
+    (`chr` and `position`).
+*   `CpG_chromosome_names.txt` -- file with chromosome names (factor levels)
+    for the integer column `chr` in the location filematrix.
+*   `Coverage.*` -- filematrix with the data for all samples and all locations.\
+    Each row has data for a single sample.
+    Row names are sample names.\
+    Each column has data for a single location.
+    Columns match rows of the location filematrix.
+*   `SNPs.*` -- filematrix with genotype data, matching the coverage matrix.
 
 First, we load the package and set up a working directory.
 The project directory `dr` can be set to
@@ -124,7 +127,7 @@ chr      = as.integer(temp %/% 1e7) + 1L
 position = as.integer(temp %% 1e7)
 
 locmat = cbind(chr = chr, position = position)
-chrnames = paste0("chr", 1:22)
+chrnames = paste0("chr", 1:10)
 pander(head(locmat))
 ```
 
@@ -133,10 +136,10 @@ Now we save locations in a filematrix
 and create a text file with chromosome names.\
 ```{r locSave}
 fmloc = fm.create.from.matrix(
-            filenamebase = paste0(dr,"/CpG_locations"),
+            filenamebase = paste0(dr, "/CpG_locations"),
             mat = locmat)
 close(fmloc)
-writeLines(con = paste0(dr,"/CpG_chromosome_names.txt"), text = chrnames)
+writeLines(con = paste0(dr, "/CpG_chromosome_names.txt"), text = chrnames)
 ```
 
 Finally, we create methylation and SNP matrices
@@ -167,16 +170,16 @@ for( i in seq_len(nvariables/byrows) ){ # i=1
     slice[,  1:225] = slice[,  1:225] + covariates$sex / 50 / sd(covariates$sex)
     slice[,101:116] = slice[,101:116] + covariates$age / 16 / sd(covariates$age)
     slice = slice +
-            ((as.integer(factor(covariates$batch))+i) %% 3) / 200 +
-            snps/1.5 +
-            runif(nsamples*byrows)/2
-    fmm[,ind] = slice;
+                ((as.integer(factor(covariates$batch))+i) %% 3) / 200 +
+                snps / 1.5 +
+                runif(nsamples*byrows) / 2
+    fmm[,ind] = slice
 }
 close(fms)
 close(fmm)
 ```
 
-## SNP-CpG analysis
+# SNP-CpG analysis
 
 Let us test for association between
 CpG scores and and the sex covariate
@@ -207,12 +210,10 @@ ramwasSNPs(param)
 ```
 
 The QQ-plot shows better enrichment with significant p-values.
-```{r plotQQ2, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
+```{r plotQQ2, echo=FALSE, warning=FALSE, message=FALSE}
 pfull = parameterPreprocess(param)
-fm = fm.open( paste0(pfull$dirSNPs, "/Stats_and_pvalues") )
-pv = fm[,3]
-close(fm)
-qqPlotFast(pv)
+mwas = getMWAS(pfull$dirSNPs)
+qqPlotFast(mwas$`p-value`)
 title("QQ-plot for CpG-SNP analysis")
 ```
 
@@ -224,12 +225,9 @@ ramwas5MWAS(param)
 ```
 
 The QQ-plot shows much weaker signal for the standard MWAS.
-```{r plotQQ1, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
-pfull = parameterPreprocess(param)
-fm = fm.open( paste0(pfull$dirmwas, "/Stats_and_pvalues") )
-pv = fm[,3]
-close(fm)
-qqPlotFast(pv)
+```{r plotQQ1, echo=FALSE, warning=FALSE, message=FALSE}
+mwas = getMWAS(param)
+qqPlotFast(mwas$`p-value`)
 title(pfull$qqplottitle)
 ```
 
@@ -238,7 +236,7 @@ for both analyses:
 ```{r topPvSNPs}
 # Get the directory with testing results
 toptbl = read.table(
-                paste0(pfull$dirSNPs,"/Top_tests.txt"),
+                paste0(pfull$dirSNPs, "/Top_tests.txt"),
                 header = TRUE,
                 sep = "\t")
 pander(head(toptbl,10))
@@ -250,7 +248,7 @@ and thus uses F-test, while regular MWAS uses t-test.
 ```{r topPvMWAS}
 pfull = parameterPreprocess(param)
 toptbl = read.table(
-                paste0(pfull$dirmwas,"/Top_tests.txt"),
+                paste0(pfull$dirmwas, "/Top_tests.txt"),
                 header = TRUE,
                 sep = "\t")
 pander(head(toptbl,10))

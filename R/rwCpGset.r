@@ -22,14 +22,15 @@ getCpGsetALL = function( genome ){
     Gint = logical(256); Gint[as.integer(Graw)] = TRUE;
 
     starts_fun = function(chrom){
-        which( Cint[as.integer(chrom[-length(chrom)])] &
-               Gint[as.integer(chrom[-1])] )
+        which(
+            Cint[as.integer(chrom[-length(chrom)])] &
+            Gint[as.integer(chrom[-1])] );
     }
 
-    cpgset = vector("list", length(genome))
+    cpgset = vector("list", length(genome));
     names(cpgset) = names(genome);
     for( i in seq_along(genome) ){ # i = length(genome)
-        message("Processing ",names(genome)[i]);
+        message("Processing ", names(genome)[i]);
         cpgset[[i]] = starts_fun(charToRaw(as.character(genome[[i]])));
     }
     return(cpgset);
@@ -44,9 +45,9 @@ insilicoFASTQ = function(con, gensequence, fraglength){
     if (is.character(con)){
         if(nchar(con) > 0){
             if(grepl("\\.gz$",con)){
-                con = gzfile(con, open = "wb")
+                con = gzfile(con, open = "wb");
             } else {
-                con = file(con, open = "wb")
+                con = file(con, open = "wb");
             }
             on.exit(close(con))
         } else {
@@ -54,9 +55,10 @@ insilicoFASTQ = function(con, gensequence, fraglength){
         }
     }
 
-    qual = charToRaw(paste0("\n+\n",paste(rep("A",fraglength),
-                                          collapse = ""),
-                            "\n"));
+    qual = charToRaw(paste0(
+                        "\n+\n",
+                        paste(rep("A",fraglength), collapse = ""),
+                        "\n"));
 
     sequence = as.character(gensequence);
     Encoding(sequence) = "bytes";
@@ -79,10 +81,12 @@ insilicoFASTQ = function(con, gensequence, fraglength){
             dim(mat) = c(3,to-fr+1);
             mat[3,] = list(qual);
         }
-        mat[1,] = lapply(paste0("@",formatC(fr:to, width = 9, flag = "0"),"\n"),
-                         charToRaw);
-        mat[2,] = lapply(fr:to,
-                         function(a){ y[a:(a+fraglength-1)] } );
+        mat[1,] = lapply(
+                    X = paste0("@",formatC(fr:to, width = 9, flag = "0"), "\n"),
+                    FUN = charToRaw);
+        mat[2,] = lapply(
+                    X = fr:to,
+                    FUN = function(a){ y[a:(a+fraglength-1)] });
 
         keep = (y[fr:to]!=0x4e) & (y[(fr:to)+fraglength-1]!=0x4e);
         if(any(keep)){
@@ -160,7 +164,7 @@ injectSNPsMAF = function(gensequence, frqcount, MAF = 0.01){ #
         countACGT[is.na(countACGT)] = 0;
         if(sum(countACGT) > 0 ){
             countACGT = countACGT / sum(countACGT);
-            index = (countACGT >= MAF)+1L;
+            index = (countACGT >= MAF) + 1L;
             dim(index) = c(1,4);
             gensequence[pos[i]] = rawACGT[index];
         }

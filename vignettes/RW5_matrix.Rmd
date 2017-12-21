@@ -1,12 +1,14 @@
 ---
-title: "5. Analyzing Data from Other Methylation Platforms or Data Types"
+title: "Analyzing Data from Other Methylation Platforms or Data Types"
 date: "`r Sys.Date()`"
 output:
-  BiocStyle::html_document:
-    toc: true # table of content true
+    BiocStyle::html_document:
+        toc: true # table of content true
 vignette: >
-  %\VignetteIndexEntry{5. Analyzing data from other sources}
-  %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteIndexEntry{5. Analyzing data from other sources}
+    %\VignetteEngine{knitr::rmarkdown}
+editor_options:
+    chunk_output_type: console
 ---
 
 
@@ -16,6 +18,7 @@ library(knitr)
 library(pander)
 suppressPackageStartupMessages(library(ramwas))
 panderOptions("digits", 3)
+opts_chunk$set(fig.width = 6, fig.height = 6)
 # opts_chunk$set(eval=FALSE)
 # dr = "D:/temp/"
 ```
@@ -49,19 +52,19 @@ We create data files in the same format as produced by
 
 These files include
 
-* `CpG_locations.*` -- filematrix with the location of 
-the CpGs / SNPs / gene trascription start sites.\
-It must have two columns with integer values -- 
-chromosome number and location
-(`chr` and `position`).
-* `CpG_chromosome_names.txt` -- file with chromosome names (factor levels)
-for the integer column `chr` in the location filematrix.
-* `Coverage.*` -- filematrix with the data for all samples and all locations.\
-  Each row has data for a single sample.
-  Row names must be sample names.\
-  Each column has data for a single location
-  (CpG / SNP / gene trascription start site).
-  Columns must match rows of the location filematrix.\
+*   `CpG_locations.*` -- filematrix with the location of 
+    the CpGs / SNPs / gene trascription start sites.\
+    It must have two columns with integer values -- 
+    chromosome number and location
+    (`chr` and `position`).
+*   `CpG_chromosome_names.txt` -- file with chromosome names (factor levels)
+    for the integer column `chr` in the location filematrix.
+*   `Coverage.*` -- filematrix with the data for all samples and all locations.\
+    Each row has data for a single sample.
+    Row names must be sample names.\
+    Each column has data for a single location
+    (CpG / SNP / gene trascription start site).
+    Columns must match rows of the location filematrix.\
 
 First, we load the package and set up a working directory.
 The project directory `dr` can be set to
@@ -107,7 +110,7 @@ chr      = as.integer(temp %/% 1e7) + 1L
 position = as.integer(temp %% 1e7)
 
 locmat = cbind(chr = chr, position = position)
-chrnames = paste0("chr", 1:22)
+chrnames = paste0("chr", 1:10)
 pander(head(locmat))
 ```
 
@@ -119,8 +122,9 @@ fmloc = fm.create.from.matrix(
             filenamebase = paste0(dr,"/CpG_locations"),
             mat = locmat)
 close(fmloc)
-writeLines(con = paste0(dr,"/CpG_chromosome_names.txt"),
-           text = chrnames)
+writeLines(
+        con = paste0(dr,"/CpG_chromosome_names.txt"),
+        text = chrnames)
 ```
 
 Finally, we create data matrix.
@@ -154,9 +158,9 @@ close(fm)
 
 To run PCA with RaMWAS we specify three parameters:
 
-* `dircoveragenorm` -- directory with the data matrix
-* `covariates` -- data frame with covariates
-* `modelcovariates` -- names of covariates to regress out
+*   `dircoveragenorm` -- directory with the data matrix
+*   `covariates` -- data frame with covariates
+*   `modelcovariates` -- names of covariates to regress out
 
 ```{r param1}
 param = ramwasParameters(
@@ -178,14 +182,14 @@ ramwas4PCA(param)
 ```
 
 The top several PCs are marginally distinct from the rest.
-```{r plotPCA, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
+```{r plotPCA, warning=FALSE, message=FALSE}
 pfull = parameterPreprocess(param)
 e = readRDS(paste0(pfull$dirpca, "/eigen.rds"))
-ramwas:::plotPCvalues(e$values)
-ramwas:::plotPCvectors(e,1)
-ramwas:::plotPCvectors(e,2)
-ramwas:::plotPCvectors(e,3)
-ramwas:::plotPCvectors(e,4)
+plotPCvalues(e$values)
+plotPCvectors(e, 1)
+plotPCvectors(e, 2)
+plotPCvectors(e, 3)
+plotPCvectors(e, 4)
 rm(e)
 ```
 
@@ -197,9 +201,10 @@ the table shows R^2^ instead of correlations.
 ```{r topCorNULL}
 # Get the directory with PCA results
 pfull = parameterPreprocess(param)
-tblcr = read.table(paste0(pfull$dirpca, "/PC_vs_covs_corr.txt"),
-                 header = TRUE,
-                 sep = "\t")
+tblcr = read.table(
+            file = paste0(pfull$dirpca, "/PC_vs_covs_corr.txt"),
+            header = TRUE,
+            sep = "\t")
 pander(head(tblcr, 5))
 ```
 
@@ -208,9 +213,10 @@ show that the top two PCs are correlated with
 sex and age while a number of other PCs are affected by sample batch effects.
 ```{r topPvNULL}
 pfull = parameterPreprocess(param)
-tblpv = read.table(paste0(pfull$dirpca, "/PC_vs_covs_pvalue.txt"),
-                 header = TRUE,
-                 sep = "\t")
+tblpv = read.table(
+            file = paste0(pfull$dirpca, "/PC_vs_covs_pvalue.txt"),
+            header = TRUE,
+            sep = "\t")
 pander(head(tblpv, 5))
 ```
 
@@ -232,9 +238,10 @@ The p-values for association between PCs and covariates changed slightly:
 ```{r topPvBatch}
 # Get the directory with PCA results
 pfull = parameterPreprocess(param)
-tblpv = read.table(paste0(pfull$dirpca, "/PC_vs_covs_pvalue.txt"),
-                 header = TRUE,
-                 sep = "\t")
+tblpv = read.table(
+            file = paste0(pfull$dirpca, "/PC_vs_covs_pvalue.txt"),
+            header = TRUE,
+            sep = "\t")
 pander(head(tblpv, 5))
 ```
 Note that the PCs are now orthogonal to the batch effects and thus
@@ -259,12 +266,9 @@ ramwas5MWAS(param)
 The QQ-plot shows mild enrichment among a large number of variables,
 which is consistent with how the data was generated --
 22\% of variables are affected by sex.
-```{r tableMWAS, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.height=6}
-pfull = parameterPreprocess(param)
-fm = fm.open( paste0(pfull$dirmwas, "/Stats_and_pvalues") )
-pv = fm[,3]
-close(fm)
-qqPlotFast(pv)
+```{r tableMWAS, warning=FALSE, message=FALSE}
+mwas = getMWAS(param)
+qqPlotFast(mwas$`p-value`)
 title(pfull$qqplottitle)
 ```
 
@@ -273,9 +277,9 @@ The top finding saved in the text file are:
 # Get the directory with testing results
 pfull = parameterPreprocess(param)
 toptbl = read.table(
-                paste0(pfull$dirmwas,"/Top_tests.txt"),
-                header = TRUE,
-                sep = "\t")
+            file = paste0(pfull$dirmwas,"/Top_tests.txt"),
+            header = TRUE,
+            sep = "\t")
 pander(head(toptbl, 5))
 ```
 

@@ -26,40 +26,79 @@ export(
     processCommandLine,
     qcmean,
     qqPlotFast,
+    qqPlotPrepare,
+    manPlotPrepare,
+    manPlotFast,
+    plotPCvalues,
+    plotPCvectors,
     plotROC,
+    plotPrediction,
+    plotCVcors,
     rowSumsSq,
     colSumsSq,
     testPhenotype,
     getCpGsetALL,
     getCpGsetCG,
-    getTestsByLocation,
+    getLocations,
+    getMWAS,
+    getMWASandLocations,
+    getMWASrange,
     getDataByLocation,
+    madeBED,
+    madeBEDrange,
+    madeBEDgraph,
+    madeBEDgraphGange,
     insilicoFASTQ,
     injectSNPsMAF,
+    mat2cols,
+    estimateFragmentSizeDistribution,
+    plotFragmentSizeDistributionEstimate,
     ramwasSNPs
 )
+
+exportClasses("rwDataClass")
+
+# export(
+#     .log,
+#     .showErrors,
+#     pipelineCoverage1Sample,
+#     .ramwas3coverageJob,
+#     .ramwas3transposeFilterJob,
+#     .ramwas3normalizeJob,
+#     .set1MLKthread,
+#     .matchCovmatCovar,
+#     .getCovariates,
+#     .file.remove,
+#     postPCAprocessing,
+#     .ramwas4PCAjob,
+#     .testCovariates,
+#     .ramwas5MWASjob,
+#     groupSample
+# )
 
 importFrom(methods,
     setRefClass, new)
 importFrom(grDevices,
-    dev.off, pdf)
+    dev.off, pdf, png)
 importFrom(graphics,
     abline, legend, lines, par, plot,
-    points, title, axis, barplot, hist)
+    points, title, axis, barplot, hist, layout)
 importFrom(stats,
-    complete.cases, pf, pt, qf, qt, optim,
-    model.matrix, quantile, median, qlogis,
+    complete.cases, pf, pt, qf, qt, optim, rnorm, pnorm,
+    model.matrix, quantile, median, qlogis, rnbinom,
     plogis, qbeta, cor, lm, qchisq, runif, sd)
 importFrom(utils,
-    flush.console, head, tail,
+    flush.console, head, tail, memory.limit,
     tail.matrix, read.table, write.table)
+importFrom(grDevices, 
+    palette)
 importFrom(GenomicAlignments,
     cigarWidthAlongQuerySpace, cigarWidthAlongReferenceSpace)
 importFrom(Rsamtools,
     scanBamFlag, ScanBamParam, BamFile,
     open.BamFile, scanBam, asBam)
 importFrom(parallel,
-    makeCluster, clusterEvalQ, clusterApplyLB,
+    makeCluster, clusterEvalQ, clusterApplyLB, clusterCall,
     stopCluster, detectCores, clusterExport)
 importFrom(KernSmooth, locpoly)
 importFrom(digest, digest)
@@ -72,6 +111,7 @@ importFrom(filematrix,
     fm.create.from.matrix, closeAndDeleteFiles)
 importClassesFrom(filematrix, filematrix)
 importMethodsFrom(filematrix, close)
+importMethodsFrom(filematrix, as.matrix)
 importMethodsFrom(BiocGenerics, start)
 
 S3method(plot, qcHistScore)

@@ -74,14 +74,23 @@ findBestNpvs = function(pv, n){
 
 # Standard BH p-value to q-value calculation
 pvalue2qvalue = function(pv, n = length(pv)){
-    ord = sort.list(pv);
-    FDR = pv[ord] * n / seq_along(pv);
-    FDR[length(FDR)] = min(FDR[length(FDR)], 1);
-    FDR = rev(cummin(rev(FDR)));
-
-    rez = double(length(pv));
-    rez[ord] = FDR;
-    return(rez)
+    if( length(pv) == 0 )
+        return(pv);
+    if( is.unsorted(pv) ){
+        ord = sort.list(pv, decreasing = TRUE);
+        FDR = pv[ord] * n / (length(pv):1);
+        FDR[1] = min(FDR[1], 1);
+        FDR = cummin(FDR);
+    
+        rez = double(length(pv));
+        rez[ord] = FDR;
+        return(rez);
+    } else {
+        FDR = pv * n / seq_along(pv);
+        FDR[length(FDR)] = min(FDR[length(FDR)], 1);
+        FDR = rev(cummin(rev(FDR)));
+        return(FDR);
+    }
 }
 
 # Caching environment
@@ -106,68 +115,52 @@ cachedRDSload = function(rdsfilename){
 
 # Orthonormalize a set of covariates
 orthonormalizeCovariates = function(cvrt, modelhasconstant = TRUE){
+    # Prevent missing values
     if(any(sapply(lapply(cvrt, is.na), any)))
-        stop("Missing values are not allowed in the covariates")
+        stop("Missing values are not allowed in the covariates");
+    
+    # Add a constant?
     if(modelhasconstant){
         cvrtset = c(const = list(rep(1, nrow(cvrt))), cvrt);
     } else {
         cvrtset = cvrt;
     }
+    
+    # Transform factor covariates into dummies, kill zero covariates
     if(is.list(cvrtset)){
-        factorset = which(sapply(cvrtset, class) %in% c("character","factor"));
-        for( ind in factorset ){ # ind = 3
-            fctr = factor(cvrtset[[ind]]);
-            cvrtset[[ind]] = model.matrix(~fctr)[,-1];
-            rm(fctr);
+        isfactorset = sapply(cvrtset, class) %in% c("character","factor");
+        for( ind in seq_along(isfactorset) ){ # ind = 1
+            if(isfactorset[ind]){
+                fctr = factor(cvrtset[[ind]]);
+                if(nlevels(fctr) >= 2) {
+                    cvrtset[[ind]] = model.matrix(~fctr)[,-1];
+                } else {
+                    cvrtset[[ind]] = NULL;
+                }
+                rm(fctr);
+            } else {
+                # Kill pure zero covariates
+                if(all(cvrtset[[ind]] == 0))
+                    cvrtset[ind] = list(NULL);
+            }
         }
         cvrtmat = matrix(unlist(cvrtset), nrow = nrow(cvrt));
     } else {
         cvrtmat = cvrtset;
     }
+    
+    # Orthonormalize the covariates
     cvrtqr = qr.Q(qr(cvrtmat));  ### tcrossprod(cvrtqr) - diag(nrow(cvrtqr))
     return(cvrtqr)
 }
 
-# find how samples in CpG score matrix
-# match those in "covariates" parameter
-# get the total number of CpGs along the way
-.matchCovmatCovar = function( param ){
-
-    # Sample names in covariates
-    cvsamples = param$covariates[[1]];
-
-    # Grab info form coverage matrix
-    fm = fm.open( paste0(param$dircoveragenorm, "/Coverage"), readonly = TRUE);
-    fmsamples = rownames(fm);
-    ncpgs = ncol(fm);
-    close(fm);
-
-    # Match samples in covariates with those in coverage matrix
-    if(is.null(cvsamples)){
-        # if covariates are not set, assume they match.
-        rowsubset = NULL;
-    } else {
-        rowsubset = match(cvsamples, fmsamples, nomatch = 0L);
-        if( any(rowsubset==0) )
-            stop( paste("Unknown samples in covariate file:",
-                        cvsamples[head(which(rowsubset==0))]) );
-
-        # if no reordering is required, set rowsubset=NULL
-        if( length(cvsamples) == length(fmsamples) ){
-            if( all(rowsubset == seq_along(rowsubset)) ){
-                rowsubset = NULL;
-            }
-        }
-    }
-    return(list(rowsubset = rowsubset, ncpgs = ncpgs, cvsamples = cvsamples));
-}
-
 # Get covariates + PCs matrix for analysis
 # orthonormalized unless normalize == FALSE
-.getCovariates = function(param,
-                          rowsubset = NULL,
-                          normalize = TRUE,
-                          modelhasconstant){
+.getCovariates = function(
+        param,
+        rowsubset = NULL,
+        normalize = TRUE,
+        modelhasconstant){
     # Named covariates
     cvrt = param$covariates[ param$modelcovariates ];
 
@@ -195,3 +188,51 @@ orthonormalizeCovariates = function(cvrt, modelhasconstant = TRUE){
     return(rez);
 }
 
+# .set1MLKthread = function(){
+#     if("package:RevoUtilsMath" %in% search())
+#         if(exists("setMKLthreads", where = "package:RevoUtilsMath"))
+#             RevoUtilsMath::setMKLthreads(1);
+# }
+
+# The logging function
+.log = function(ld, fmt, ..., append = TRUE){
+    msg = sprintf(fmt, ...);
+    cat(file = paste0(ld, "/Log.txt"),
+        msg, "\n", sep = "", append = append);
+    message(msg);
+    return(invisible(msg));
+}
+
+.logErrors = function(ld, fun){
+    function(...){
+        withCallingHandlers(
+            tryCatch(fun(...),
+                error = function(e){
+                    .log(ld, "%s, Process %06d\nError: %s\nIn: %s",
+                        date(), Sys.getpid(),
+                        conditionMessage(e), deparse(conditionCall(e)));
+                }
+            ),
+            warning = function(w){
+                .log(ld, "%s, Process %06d\nWarning: %s\nIn: %s",
+                    date(), Sys.getpid(),
+                    conditionMessage(w), deparse(conditionCall(w)));
+                invokeRestart("muffleWarning");
+            }
+        )
+    }
+}
+
+.showErrors = function(z){
+    for( x in z )
+        if(is.character(x))
+            message(x);
+}
+
+# .logErrors = function(ld, fun)fun;
+
+mat2cols = function(x){
+    x = as.matrix(x);
+    return(lapply(seq_len(ncol(x)), function(i)x[,i]));
+};
+        
