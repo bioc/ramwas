@@ -48,11 +48,6 @@ calc.coverage = function(rbam, cpgset, fragdistr){
     return(coveragelist);
 }
 
-# .readRDS = function(object){
-#     # readBin(object, what = "raw", n = file.size(object));
-#     return(readRDS(object));
-# }
-
 # calculate CpG score matrix for 1 sample
 pipelineCoverage1Sample = function(colnum, param){
 
@@ -299,7 +294,7 @@ ramwas3normalizedCoverage = function( param ){
     
     # Are samples in covariates are in bam2sample?
     if( !is.null(param$covariates) ){
-        badset = !(names(param$bam2sample) %in% param$covariates[[1]]);
+        badset = !(param$covariates[[1]] %in% names(param$bam2sample));
         if( any(badset) )
             stop("Covariate file has samples not present in \"bam2sample\" ",
                 "parameter:\n ",
@@ -313,8 +308,8 @@ ramwas3normalizedCoverage = function( param ){
     {
         message("Checking if all required Rbam files present");
         bams = unlist(param$bam2sample);
-        for( bname in bams){
-            filename = paste0( param$dirrbam, "/", bname, ".rbam.rds");
+        for( bname in bams ){
+            filename = paste0(param$dirrbam, "/", bname, ".rbam.rds");
             if( !file.exists(filename) ){
                 stop(paste0("Rbam file from bam2sample not found: ", filename));
             }
@@ -577,5 +572,5 @@ ramwas3normalizedCoverage = function( param ){
         .log(ld, "%s, Done Normalizing coverage matrix.", date());
     }
         
-    .log(ld, "%s, Done ramwas3normalizedCoverage()", date());
+    .log(ld, "%s, Done ramwas3normalizedCoverage() call", date());
 }

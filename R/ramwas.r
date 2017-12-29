@@ -19,31 +19,6 @@
     return(x + y);
 }
 
-# chech if path is absolute
-# (common alternatives are flawed)
-isAbsolutePath = function( path ){
-    if( path == "~" )
-        return(TRUE);
-    if( grepl("^~/", path) )
-        return(TRUE);
-    if( grepl("^.:(/|\\\\)", path) )
-        return(TRUE);
-    if( grepl("^(/|\\\\)", path) )
-        return(TRUE);
-    return(FALSE);
-}
-
-# Get full path to the "filename" assuming current directory is "path"
-makefullpath = function(path, filename){
-    if( is.null(path) )
-        return(filename);
-    if( isAbsolutePath(filename) ){
-        return(filename)
-    } else {
-        return(paste0(path, "/", filename));
-    }
-}
-
 # Delete file, no warning on NULL or missing file
 .file.remove = function(x){
     if( !is.null(x) )
@@ -188,6 +163,11 @@ orthonormalizeCovariates = function(cvrt, modelhasconstant = TRUE){
     return(rez);
 }
 
+
+.set1MLKthread = "if(\"package:RevoUtilsMath\" %in% search())
+    if(exists(\"setMKLthreads\", 
+    where = \"package:RevoUtilsMath\"))
+    RevoUtilsMath::setMKLthreads(1);";
 # .set1MLKthread = function(){
 #     if("package:RevoUtilsMath" %in% search())
 #         if(exists("setMKLthreads", where = "package:RevoUtilsMath"))
@@ -204,7 +184,7 @@ orthonormalizeCovariates = function(cvrt, modelhasconstant = TRUE){
 }
 
 .logErrors = function(ld, fun){
-    function(...){
+    rez = function(...){
         withCallingHandlers(
             tryCatch(fun(...),
                 error = function(e){
@@ -220,7 +200,13 @@ orthonormalizeCovariates = function(cvrt, modelhasconstant = TRUE){
                 invokeRestart("muffleWarning");
             }
         )
-    }
+    };
+    env = new.env(parent = baseenv());
+    assign("ld", ld, envir = env);
+    assign(".log", .log, envir = env);
+    assign("fun", fun, envir = env);
+    environment(rez) = env;
+    return(rez);
 }
 
 .showErrors = function(z){

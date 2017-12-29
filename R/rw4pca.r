@@ -219,17 +219,18 @@ ramwas4PCA = function( param ){
                     .file.remove(param$lockfile2);
                 });
                 logfun = .logErrors(ld, .ramwas4PCAjob);
-                # clusterCall(cl, .set1MLKthread);
-                clusterEvalQ(cl, parse(
-                    text = "if(\"package:RevoUtilsMath\" %in% search())
-                        if(exists(\"setMKLthreads\", 
-                            where = \"package:RevoUtilsMath\"))
-                        RevoUtilsMath::setMKLthreads(1);"));
+                clusterExport(  
+                            cl = cl,
+                            varlist = ".set1MLKthread", 
+                            envir = asNamespace("ramwas"));
+                clusterEvalQ(cl, eval(parse(text = .set1MLKthread)));
+                # clusterCall(cl, function(){RevoUtilsMath::setMKLthreads()});
+                
                 covlist = clusterApplyLB(
-                                cl = cl,
-                                x = rangeset,
-                                fun = logfun,
-                                param = param);
+                            cl = cl,
+                            x = rangeset,
+                            fun = logfun,
+                            param = param);
                 .showErrors(covlist);
                 covmat = Reduce(f = `+`, x = covlist);
                 tmp = sys.on.exit();

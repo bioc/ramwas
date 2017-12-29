@@ -244,10 +244,9 @@ pipelineProcessBam = function(bamname, param){
 
     savebam = TRUE;
     rbam = NULL;
-    if( file.exists(rdsbmfile) ){
+    if( file.exists(rdsqcfile) & file.exists(rdsbmfile) ){
         if( param$recalculate.QCs ){
             ### Precache the input rds file
-            {invisible(readBin( rdsbmfile, "raw", file.size(rdsbmfile)));}
             rbam = readRDS(rdsbmfile);
             savebam = FALSE;
         } else {
@@ -353,7 +352,7 @@ ramwas1scanBams = function( param ){
     
     dir.create(param$dirfilter, showWarnings = FALSE, recursive = TRUE);
 
-    .log(ld, "%s, Scanning bams.", date(), append = FALSE);
+    .log(ld, "%s, Start ramwas1scanBams() call", date(), append = FALSE);
     
     nthreads = min(param$cputhreads, length(param$bamname));
     if( nthreads > 1 ){
@@ -379,6 +378,6 @@ ramwas1scanBams = function( param ){
         }
     }
     .showErrors(z);
-    .log(ld, "%s, Done scanning bams.", date());
+    .log(ld, "%s, Done ramwas1scanBams() call", date());
     return(invisible(z));
 }

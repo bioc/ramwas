@@ -40,6 +40,7 @@ plotROC = function(outcome, forecast){
     legend(
         "bottom",
         legend = sprintf("AUC = %.3f", auc),
+        bg = "transparent",
         bty = "n");
     return(auc);
 }
@@ -234,7 +235,7 @@ ramwas7BrunElasticNet = function(param){
             } # forecast0
             {
                 # get p-values
-                mwas = getMWAS(param);
+                mwas = getMWAS(dircvmwas);
                 pv = mwas$`p-value`;
                 rm(mwas);
             } # pv
@@ -319,10 +320,12 @@ ramwas7BrunElasticNet = function(param){
                 plotROC(outcome = outcome,
                         forecast = forecast)
                 legend(
-                    "bottomright",
+                    "right",
                     legend = c(
                         paste0("# CpGs = ",   cpgs2use),
-                        paste0("EN alpha = ", param$mmalpha)));
+                        paste0("EN alpha = ", param$mmalpha)),
+                    bg = "transparent",
+                    bty = "n");
                 title(paste0(
                     "ROC curve for prediction of \"", param$modeloutcome,"\"\n",
                     param$cvnfolds, "-fold cross validation"));
@@ -401,10 +404,12 @@ ramwas7CplotByNCpGs = function(param){
             plotROC(outcome = datalist[[i]]$outcome,
                     forecast = datalist[[i]]$forecast)
             legend(
-                    "bottomright",
-                    legend = c(
-                            paste0("# CpGs = ",   cpgs2use),
-                            paste0("EN alpha = ", param$mmalpha)));
+                "right",
+                legend = c(
+                    paste0("# CpGs = ",   cpgs2use),
+                    paste0("EN alpha = ", param$mmalpha)),
+                bg = "transparent",
+                bty = "n");
             title(paste0(
                 "ROC curve for prediction of \"", param$modeloutcome,"\"\n",
                 param$cvnfolds,"-fold cross validation"));

@@ -54,8 +54,8 @@ testPhenotype = function(phenotype, data, cvrtqr){
                     correlation = 0,
                     tstat = 0,
                     pvalue = 1,
-                    nVarTested = nVarTested,
-                    dfFull = dfFull,
+                    nVarTested = 0,
+                    dfFull = 0,
                     statname = ""));
         } else {
             pheno = pheno / sqrt(sum(pheno^2));
@@ -337,14 +337,12 @@ ramwas5MWAS = function( param ){
                 .file.remove(param$lockfile2);
             });
             clusterExport(cl, "testPhenotype");
-            # clusterCall(cl, .set1MLKthread);
-            clusterEvalQ(cl, parse(
-                text = "if(\"package:RevoUtilsMath\" %in% search())
-                    if(exists(\"setMKLthreads\", 
-                        where = \"package:RevoUtilsMath\"))
-                    RevoUtilsMath::setMKLthreads(1);"));
-            # clusterExport(cl, c(".log","ld",".ramwas5MWASjob"));
             logfun = .logErrors(ld, .ramwas5MWASjob);
+            clusterExport(  
+                        cl = cl, 
+                        varlist = ".set1MLKthread", 
+                        envir = asNamespace("ramwas"));
+            clusterEvalQ(cl, eval(parse(text = .set1MLKthread)));
             z = clusterApplyLB(
                         cl = cl,
                         x = rangeset,
@@ -398,17 +396,19 @@ ramwas5MWAS = function( param ){
             width = 420*9*1.5, 
             height = 420*3.8*1.5, 
             pointsize = 16*4);
-        
+
+        ylim = c(0, max(qq$xpvs[1], qq$ypvs[1])*1.05);
+                
         layout(matrix(c(1,2), 1, 2, byrow = TRUE), widths=c(1,2.2));
 
-        qqPlotFast(qq, lwd = 7);
+        qqPlotFast(qq, lwd = 7, ylim = ylim);
         
         man = manPlotPrepare(
                 pvalues = pvalues,
                 chr = locs$chr, 
                 pos = (locs$start + locs$end) %/% 2L);
         
-        manPlotFast(man, lwd = 7);
+        manPlotFast(man, lwd = 7, ylim = ylim);
         
         dev.off();
         saveRDS(file = paste0(param$dirmwas,"/z_MANinfo.rds"), object = man);
@@ -417,5 +417,7 @@ ramwas5MWAS = function( param ){
     if(!is.null(locs))
         ramwas5saveTopFindings(param);
 
+    .log(ld, "%s, Done ramwas5MWAS() call", date());
+    
     return(invisible(NULL));
 }

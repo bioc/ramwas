@@ -166,6 +166,31 @@ trimBamFilename = function(bamnames){
     return(BNnodotbam);
 }
 
+# chech if path is absolute
+# (common alternatives are flawed)
+isAbsolutePath = function( path ){
+    if( path == "~" )
+        return(TRUE);
+    if( grepl("^~/", path) )
+        return(TRUE);
+    if( grepl("^.:(/|\\\\)", path) )
+        return(TRUE);
+    if( grepl("^(/|\\\\)", path) )
+        return(TRUE);
+    return(FALSE);
+}
+
+# Get full path to the "filename" assuming current directory is "path"
+makefullpath = function(path, filename){
+    if( is.null(path) )
+        return(filename);
+    if( isAbsolutePath(filename) ){
+        return(filename)
+    } else {
+        return(paste0(path, "/", filename));
+    }
+}
+
 # Fill in gaps in the parameter list
 # Make paths absolute
 parameterPreprocess = function( param ){
@@ -178,6 +203,9 @@ parameterPreprocess = function( param ){
     # Set up basic directories
     if( is.null(param$dirproject) )
         param$dirproject = getwd();
+    
+    if( !isAbsolutePath(param$dirproject) )
+        param$dirproject = makefullpath(getwd(), param$dirproject);
 
     if( is.null(param$dirbam))
         param$dirbam = "bams";
