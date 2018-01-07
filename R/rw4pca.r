@@ -65,29 +65,33 @@
     return(covmat);
 }
 
-plotPCvalues = function(values, n = 40){
+plotPCvalues = function(values, n = 40, ylim = NULL, col = "blue"){
     pc100 = head(values,n)/sum(values)*100;
+    if(is.null(ylim))
+        ylim = c(0, pc100[1]*1.05);
     plot(
         x = pc100,
         pch = 19,
-        col = "blue",
-        ylim = c(0, pc100[1]*1.05),
+        col = col,
+        ylim = ylim,
         xlim = c(0, length(pc100)+0.5),
-        main = "Principal components",
-        xlab = "PCs",
-        ylab = "Variation Explained (%)",
+        xlab = "Principal components (PCs)",
+        ylab = "Variation Explained, %",
         yaxs = "i",
-        xaxs = "i")
+        xaxs = "i",
+        axes = FALSE);
+    axis(1);
+    axis(2);
 }
 
-plotPCvectors = function(e, i){
+plotPCvectors = function(e, i, col = "blue1"){
     plot(
         x = e$vectors[,i],
         main = paste("PC",i),
         xlab = "Samples",
         ylab = "PC components",
         pch = 19,
-        col = "blue1",
+        col = col,
         xlim = c(0.001, length(e$values)+0.999),
         xaxs = "i");
     abline(h = 0, col = "grey");
@@ -114,6 +118,7 @@ postPCAprocessing = function(param, e = NULL, plotPCs = 20){
         .log(ld, "%s, Saving PCA plots in: %s", date(), plotfilename);
         pdf(plotfilename, 7, 7);
         plotPCvalues(e$values, n = 40);
+        title("Principal components");
         for( i in seq_len(min(plotPCs,nonzeroPCs)))
             plotPCvectors(e,i);
         dev.off();
