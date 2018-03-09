@@ -378,7 +378,8 @@ Y is a code distinguishing different sets with the same number of covariates
 (see [Directory names][]).
 The sub-directory includes:
 
-*   `covmat.rds` and `eigen.rds` - RDS files with the covariance matrix and
+*   `covmat.*`, `eigenvalues.*`, and `eigenvectors.*` -- 
+    filematrices with the sample covariance matrix and 
     its eigenvalue decomposition.
 *   `PC_values.txt` -- principal components scores.
 *   `PC_loadings.txt` -- sample loadings for the top 20 PCs.
@@ -393,10 +394,14 @@ The PC plot for artificial data shows one strong component and
 no outliers in the sample loadings, with first PC clearly capturing sample sex.
 
 ```{r plotPCA, warning=FALSE, message=FALSE}
-e = readRDS(paste0(pfull$dirpca, "/eigen.rds"))
-plotPCvalues(e$values)
-plotPCvectors(e, 1)
-plotPCvectors(e, 2)
+eigenvalues = fm.load(paste0(pfull$dirpca, "/eigenvalues"));
+eigenvectors = fm.open(
+                filenamebase = paste0(pfull$dirpca, "/eigenvectors"),
+                readonly = TRUE);
+plotPCvalues(eigenvalues)
+plotPCvectors(eigenvectors[,1], 1)
+plotPCvectors(eigenvectors[,2], 2)
+close(eigenvectors)
 ```
 
 The file with correlations shows

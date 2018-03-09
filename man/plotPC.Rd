@@ -11,7 +11,7 @@
 }
 \usage{
 plotPCvalues(values, n = 40, ylim = NULL, col = "blue")
-plotPCvectors(e, i, col = "blue1")
+plotPCvectors(eigenvector, i, col = "blue1")
 }
 \arguments{
     \item{values}{
@@ -27,9 +27,8 @@ plotPCvectors(e, i, col = "blue1")
     \item{col}{
         Color of the plotted points.
     }
-    \item{e}{
-        Eigenvalue decomposition (spectral decomposition) as returned by 
-        \code{\link[base]{eigen}}.
+    \item{eigenvector}{
+        The i-th eigenvector. See \code{\link[base]{eigen}}.
     }
     \item{i}{
         Indicates loadings of which PC to plot.
@@ -39,7 +38,7 @@ plotPCvectors(e, i, col = "blue1")
     This function creates a PC plot and returns nothing (\code{NULL}).
 }
 \author{
-    Andrey A Shabalin \email{ashabalin@vcu.edu}
+    Andrey A Shabalin \email{andrey.shabalin@gmail.com}
 }
 \seealso{
     See vignettes: \code{browseVignettes("ramwas")}.
@@ -59,6 +58,6 @@ e = eigen(covmat)
 plotPCvalues(e$values)
 
 # Plot PC vectors
-plotPCvectors(e, 1)
-plotPCvectors(e, 2)
+plotPCvectors(e$vectors[,1], 1)
+plotPCvectors(e$vectors[,2], 2)
 }

@@ -82,13 +82,18 @@ setRefClass("rwDataClass",
             
             # Get PCs
             if( getPCs & (param$modelPCs > 0) ){
-                filename = paste0(param$dirpca, "/eigen.rds");
+                filename = paste0(param$dirpca, "/eigenvectors.bmat");
                 if( !file.exists(filename) )
                     stop(   "File not found: ", filename, "\n",
                             "Cannot include PCs in the analysis.\n",
                             "Run PCA analysis first with ramwas4PCA().");
-                e = readRDS(filename);
-                PCs = e$vectors[, seq_len(param$modelPCs), drop=FALSE];
+                # e = readRDS(filename);
+                eigenvectors = fm.open(
+                        filenamebase = paste0(param$dirpca, "/eigenvectors"),
+                        readonly = TRUE);
+                PCs = eigenvectors[, seq_len(param$modelPCs)]; # , drop=FALSE
+                eigenvectors$close();
+                
                 if(!is.null( rowsubset ))
                     PCs = PCs[rowsubset,];
                 cvrt = cbind(cvrt, PCs);
@@ -112,20 +117,28 @@ setRefClass("rwDataClass",
             if( !is.null(rowsubset) )
                 x = x[rowsubset, ];
             
+            # NA's are coded with 255 in raw filematrices
+            if( is.raw(x) ){
+                # x = matrix(as.raw(0:255), 16, 16);
+                storage.mode(x) = 'numeric';
+                x[x == 255] = NA_real_;
+            }
+            
             # Impute missing values
             naset = is.na(x);
             if( any(naset) ){
                 set = which(colSums(naset) > 0L);
+                rm(naset);
                 for( j in set ){ # j = set[1]
                     cl = x[,j];
                     mn = mean(cl, na.rm = TRUE);
                     if( is.na(mn) )
                         mn = 0;
-                    where1 = is.na( x[j, ] );
-                    x[is.na(cl),j] = mn;
+                    x[is.na(cl), j] = mn;
                 }
+            } else {
+                rm(naset);
             }
-            rm(naset);
 
             # Orthogonalize w.r.t. covariates
             if( resid ){

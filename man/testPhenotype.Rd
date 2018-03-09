@@ -9,14 +9,14 @@
     association with methylation coverage (columns of the data parameter).
 }
 \usage{
-testPhenotype(phenotype, data, cvrtqr)
+testPhenotype(phenotype, data1, cvrtqr)
 }
 \arguments{
     \item{phenotype}{
         Vector with phenotype. Can be numerical, character, or factor vector.
     }
-    \item{data}{
-        Matrix with normalized coverage, one variable (CpG) per column.
+    \item{data1}{
+        Matrix with data (normalized coverage), one variable (CpG) per column.
     }
     \item{cvrtqr}{
         Orthonormalized covariates, one covariate per column.
@@ -45,7 +45,7 @@ testPhenotype(phenotype, data, cvrtqr)
     \item{dfFull}{Second number of degrees of freedom for the F-test.}
 }
 \author{
-    Andrey A Shabalin \email{ashabalin@vcu.edu}
+    Andrey A Shabalin \email{andrey.shabalin@gmail.com}
 }
 \note{
     This function is used in several parts of the pipeline.
