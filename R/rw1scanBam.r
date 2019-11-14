@@ -78,7 +78,6 @@ bam.scanBamFile = function(bamfilename, scoretag = "MAPQ", minscore = 4){
 
         ### Put tags in the main list
         bb = c(bb[names(bb) != "tag"], bb$tag);
-        # data.frame(lapply(bb,`[`, 1:60), check.rows = FALSE)
 
         # stopifnot( length(bb[[scoretag]]) == length(bb[[1]]) )
 
@@ -169,7 +168,7 @@ bam.scanBamFile = function(bamfilename, scoretag = "MAPQ", minscore = 4){
                                     paste0(names(startlistfwd),"-"));
             class(split.levels) = "factor";
             splt = split( bb$startpos, split.levels, drop = FALSE);
-            # print(sapply(splt,length))
+            # print(vapply(splt,length,0))
             for( i in seq_along(startlistfwd) ){
                 if( length(splt[i]) > 0 ){
                     startlistfwd[[i]][[length(startlistfwd[[i]])+1L]] =
